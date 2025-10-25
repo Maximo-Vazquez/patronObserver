@@ -118,15 +118,15 @@
       <article class="card">
         <h1>
           Control manual del pedido
-          <span>Cliente: {{ order.customer_name }} · Último estado: {{ order.get_status_display }}</span>
+          <span>Cliente: {{ pedido.customer_name }} · Último estado: {{ pedido.get_status_display }}</span>
         </h1>
         <p>Selecciona un estado en la lista o envía un valor manual para simular cómo el patrón observador notifica a la clienta. Mantén abierta la otra ventana para ver el cambio reflejado automáticamente.</p>
         <form id="control-form">
           <label>
             Estado del pedido
-            <select name="status" id="status-select">
-              {% for value, label in status_choices %}
-              <option value="{{ value }}" {% if value == order.status %}selected{% endif %}>{{ label }}</option>
+            <select name="estado" id="status-select">
+              {% for value, label in opciones_estado %}
+              <option value="{{ value }}" {% if value == pedido.status %}selected{% endif %}>{{ label }}</option>
               {% endfor %}
             </select>
           </label>
@@ -135,8 +135,8 @@
         <aside class="notice" id="notice" role="status"></aside>
 
         <div class="status-grid" id="status-grid">
-          {% for value, label in status_choices %}
-          <div class="status-option {% if value == order.status %}current{% endif %}" data-status-value="{{ value }}">
+          {% for value, label in opciones_estado %}
+          <div class="status-option {% if value == pedido.status %}current{% endif %}" data-estado="{{ value }}">
             <strong>{{ label }}</strong>
             <small>
               {% if value == 'preparing' %}
@@ -158,7 +158,7 @@
     </main>
 
     <script>
-      function getCsrfToken() {
+      function obtenerTokenCsrf() {
         return document.cookie
           .split(";")
           .map((cookie) => cookie.trim())
@@ -166,58 +166,58 @@
           ?.split("=")[1];
       }
 
-      const form = document.getElementById("control-form");
-      const notice = document.getElementById("notice");
-      const select = document.getElementById("status-select");
-      const statusGrid = document.getElementById("status-grid");
+      const formulario = document.getElementById("control-form");
+      const aviso = document.getElementById("notice");
+      const selectorEstado = document.getElementById("status-select");
+      const cuadriculaEstados = document.getElementById("status-grid");
 
-      function showNotice(message, isError = false) {
-        notice.textContent = message;
-        notice.style.display = "block";
-        notice.style.backgroundColor = isError
+      function mostrarAviso(mensaje, esError = false) {
+        aviso.textContent = mensaje;
+        aviso.style.display = "block";
+        aviso.style.backgroundColor = esError
           ? "rgba(255, 82, 100, 0.18)"
           : "rgba(11, 220, 174, 0.15)";
-        notice.style.borderColor = isError
+        aviso.style.borderColor = esError
           ? "rgba(255, 107, 129, 0.45)"
           : "rgba(68, 255, 210, 0.4)";
       }
 
-      function updateGrid(currentStatus) {
-        const options = statusGrid.querySelectorAll(".status-option");
-        options.forEach((option) => {
-          option.classList.toggle("current", option.dataset.statusValue === currentStatus);
+      function actualizarCuadricula(estadoActual) {
+        const opciones = cuadriculaEstados.querySelectorAll(".status-option");
+        opciones.forEach((opcion) => {
+          opcion.classList.toggle("current", opcion.dataset.estado === estadoActual);
         });
       }
 
-      form.addEventListener("submit", async (event) => {
-        event.preventDefault();
-        const payloadStatus = select.value;
+      formulario.addEventListener("submit", async (evento) => {
+        evento.preventDefault();
+        const estadoSeleccionado = selectorEstado.value;
 
         try {
-          const response = await fetch("{% url 'order-status-set' %}", {
+          const respuesta = await fetch("{% url 'order-status-set' %}", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              "X-CSRFToken": getCsrfToken() ?? "",
+              "X-CSRFToken": obtenerTokenCsrf() ?? "",
             },
-            body: JSON.stringify({ status: payloadStatus }),
+            body: JSON.stringify({ estado: estadoSeleccionado }),
           });
 
-          const data = await response.json();
+          const datos = await respuesta.json();
 
-          if (!response.ok) {
-            showNotice(data.error ?? "No se pudo actualizar el pedido.", true);
+          if (!respuesta.ok) {
+            mostrarAviso(datos.error ?? "No se pudo actualizar el pedido.", true);
             return;
           }
 
-          showNotice(
-            `Estado actualizado a "${data.status_display}". Se enviaron ${data.notifications.length} notificaciones al cliente.`,
+          mostrarAviso(
+            `Estado actualizado a "${datos.descripcion_estado}". Se enviaron ${datos.notificaciones.length} notificaciones a la clienta.`,
           );
-          select.value = data.status;
-          updateGrid(data.status);
+          selectorEstado.value = datos.estado;
+          actualizarCuadricula(datos.estado);
         } catch (error) {
           console.error("Error al enviar el formulario", error);
-          showNotice("Ocurrió un error inesperado. Intenta nuevamente.", true);
+          mostrarAviso("Ocurrió un error inesperado. Intenta nuevamente.", true);
         }
       });
     </script>

@@ -1,4 +1,4 @@
-"""Vistas que exponen el patrón observador mediante la web."""
+"""Vistas de la aplicación de pedidos con nombres en español."""
 
 from __future__ import annotations
 
@@ -7,170 +7,150 @@ import json
 from typing import Any, Dict, List
 
 from django.http import HttpRequest, HttpResponse, JsonResponse
-from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import TemplateView, View
 
 from .models import Order
-from .observer import CustomerObserver, OrderSubject
+from .observador import ObservadoraCliente, SujetoPedido
+from .servicios import construir_evento_seguimiento
 
 
-def _get_demo_order() -> Order:
+def _obtener_pedido_demo() -> Order:
     """Obtiene o crea el pedido de demostración."""
 
-    order, _ = Order.objects.get_or_create(
+    pedido, _ = Order.objects.get_or_create(
         customer_name="Laura",
         defaults={"status": Order.Status.PREPARING},
     )
-    return order
+    return pedido
 
 
-class OrderDashboardView(TemplateView):
+class PanelPedidoVista(TemplateView):
     """Pantalla principal con el resumen del pedido y su seguimiento."""
 
     template_name = "orders/order_dashboard.html"
 
     def get_context_data(self, **kwargs: Any) -> Dict[str, Any]:
-        context = super().get_context_data(**kwargs)
-        order = _get_demo_order()
-        products = [
+        contexto = super().get_context_data(**kwargs)
+        pedido = _obtener_pedido_demo()
+        productos = [
             {
-                "name": "Box de pastelería artesanal",
+                "nombre": "Box de pastelería artesanal",
                 "sku": "BOX-CAFE-01",
-                "quantity": 1,
-                "price": 34.90,
+                "cantidad": 1,
+                "precio": 34.90,
             },
             {
-                "name": "Blend de café de especialidad 250g",
+                "nombre": "Blend de café de especialidad 250g",
                 "sku": "CAF-AR-250",
-                "quantity": 2,
-                "price": 12.50,
+                "cantidad": 2,
+                "precio": 12.50,
             },
             {
-                "name": "Mermelada orgánica de frutos rojos",
+                "nombre": "Mermelada orgánica de frutos rojos",
                 "sku": "MER-OR-125",
-                "quantity": 1,
-                "price": 6.75,
+                "cantidad": 1,
+                "precio": 6.75,
             },
         ]
-        for product in products:
-            product["line_total"] = product["price"] * product["quantity"]
+        for producto in productos:
+            producto["subtotal"] = producto["precio"] * producto["cantidad"]
 
-        context.update(
+        contexto.update(
             {
-                "order": order,
-                "status_choices": list(Order.Status.choices),
-                "products": products,
-                "order_total": sum(item["line_total"] for item in products),
-                "total_items": sum(item["quantity"] for item in products),
-                "currency": "EGP",
+                "pedido": pedido,
+                "opciones_estado": list(Order.Status.choices),
+                "productos": productos,
+                "total_pedido": sum(item["subtotal"] for item in productos),
+                "total_articulos": sum(item["cantidad"] for item in productos),
+                "moneda": "EGP",
             }
         )
-        return context
+        return contexto
 
 
-class OrderControlView(TemplateView):
+class ControlPedidoVista(TemplateView):
     """Pantalla de control manual para cambiar el estado del pedido."""
 
     template_name = "orders/order_control.html"
 
     def get_context_data(self, **kwargs: Any) -> Dict[str, Any]:
-        context = super().get_context_data(**kwargs)
-        order = _get_demo_order()
-        context.update(
+        contexto = super().get_context_data(**kwargs)
+        pedido = _obtener_pedido_demo()
+        contexto.update(
             {
-                "order": order,
-                "status_choices": list(Order.Status.choices),
+                "pedido": pedido,
+                "opciones_estado": list(Order.Status.choices),
             }
         )
-        return context
+        return contexto
 
 
 @method_decorator(csrf_exempt, name="dispatch")
-class OrderStatusUpdateView(View):
-    """Recibe peticiones AJAX para avanzar el estado del pedido."""
+class AvanceEstadoPedidoVista(View):
+    """Recibe peticiones para avanzar el estado del pedido."""
 
     http_method_names = ["post"]
 
     def post(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
-        order = _get_demo_order()
-        if order.is_completed():
+        pedido = _obtener_pedido_demo()
+        if pedido.esta_completado():
             return JsonResponse(
                 {
-                    "status": order.status,
-                    "status_display": order.get_status_display(),
-                    "notifications": [
+                    "estado": pedido.status,
+                    "descripcion_estado": pedido.get_status_display(),
+                    "notificaciones": [
                         "El pedido ya fue entregado, no hay nuevos cambios que notificar."
                     ],
-                    "completed": True,
+                    "completado": True,
                 }
             )
 
-        subject = OrderSubject(order)
-        observer = CustomerObserver(name=order.customer_name)
-        subject.attach(observer)
+        sujeto = SujetoPedido(pedido)
+        observadora = ObservadoraCliente(nombre=pedido.customer_name)
+        sujeto.agregar_observadora(observadora)
 
-        new_status = order.next_status()
-        notifications: List[str] = subject.update_status(new_status)
-        order.refresh_from_db(fields=["status"])
+        nuevo_estado = pedido.obtener_siguiente_estado()
+        notificaciones: List[str] = sujeto.actualizar_estado(nuevo_estado)
+        pedido.refresh_from_db(fields=["status", "updated_at"])
 
         return JsonResponse(
             {
-                "status": order.status,
-                "status_display": order.get_status_display(),
-                "notifications": notifications,
-                "completed": order.is_completed(),
+                "estado": pedido.status,
+                "descripcion_estado": pedido.get_status_display(),
+                "notificaciones": notificaciones,
+                "completado": pedido.esta_completado(),
             }
         )
 
 
-class OrderStatusDataView(View):
+class DatosEstadoPedidoVista(View):
     """Devuelve el estado actual del pedido para la pantalla informativa."""
 
     http_method_names = ["get"]
 
     def get(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
-        order = _get_demo_order()
-        status_choices = list(Order.Status.values)
-        try:
-            current_index = status_choices.index(order.status)
-        except ValueError:
-            current_index = 0
-        labels = dict(Order.Status.choices)
-        return JsonResponse(
-            {
-                "status": order.status,
-                "status_display": order.get_status_display(),
-                "updated_at": order.updated_at.isoformat(),
-                "progress": {
-                    "steps": [
-                        {
-                            "value": choice,
-                            "label": labels[choice],
-                            "reached": index <= current_index,
-                        }
-                        for index, choice in enumerate(status_choices)
-                    ]
-                },
-            }
-        )
+        pedido = _obtener_pedido_demo()
+        datos = construir_evento_seguimiento(pedido)
+        return JsonResponse(datos)
 
 
 @method_decorator(csrf_exempt, name="dispatch")
-class OrderStatusSetView(View):
+class DefinirEstadoPedidoVista(View):
     """Permite establecer manualmente el estado del pedido desde la consola."""
 
     http_method_names = ["post"]
 
     def post(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
-        order = _get_demo_order()
+        pedido = _obtener_pedido_demo()
         try:
-            data = json.loads(request.body or "{}")
+            datos = json.loads(request.body or "{}")
         except json.JSONDecodeError:
-            data = {}
-        new_status = data.get("status")
+            datos = {}
+        nuevo_estado = datos.get("estado")
 
-        if new_status not in dict(Order.Status.choices):
+        if nuevo_estado not in dict(Order.Status.choices):
             return JsonResponse(
                 {
                     "error": "El estado recibido no es válido.",
@@ -178,18 +158,17 @@ class OrderStatusSetView(View):
                 status=400,
             )
 
-        subject = OrderSubject(order)
-        observer = CustomerObserver(name=order.customer_name)
-        subject.attach(observer)
+        sujeto = SujetoPedido(pedido)
+        observadora = ObservadoraCliente(nombre=pedido.customer_name)
+        sujeto.agregar_observadora(observadora)
 
-        notifications: List[str] = subject.update_status(new_status)
-        order.refresh_from_db(fields=["status", "updated_at"])
+        notificaciones: List[str] = sujeto.actualizar_estado(nuevo_estado)
+        pedido.refresh_from_db(fields=["status", "updated_at"])
 
-        return JsonResponse(
+        respuesta = construir_evento_seguimiento(pedido)
+        respuesta.update(
             {
-                "status": order.status,
-                "status_display": order.get_status_display(),
-                "updated_at": order.updated_at.isoformat(),
-                "notifications": notifications,
+                "notificaciones": notificaciones,
             }
         )
+        return JsonResponse(respuesta)

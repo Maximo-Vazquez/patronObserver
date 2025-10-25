@@ -15,6 +15,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'channels',
     'orders.apps.OrdersConfig',
 ]
 
@@ -47,6 +48,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'patrones.wsgi.application'
+ASGI_APPLICATION = 'patrones.asgi.application'
 
 DATABASES = {
     'default': {
@@ -76,5 +78,11 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = 'static/'
+
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels.layers.InMemoryChannelLayer',
+    }
+}
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
