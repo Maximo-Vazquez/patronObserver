@@ -3,308 +3,446 @@
 <html lang="es">
   <head>
     <meta charset="utf-8" />
-    <title>Panel del pedido | Observador</title>
+    <title>Estado del Pedido | Observador</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css" />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" />
     <style>
+      /* --- Base y Fuentes --- */
       body {
-        background: radial-gradient(circle at top, #f3f7ff 0%, #ffffff 55%);
-        min-height: 100vh;
-        padding: 2.5rem 0 4rem;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        background-color: #f7f9fc; /* Fondo gris claro, similar al de la imagen */
+        color: #1a1a1a; /* Texto oscuro */
+      }
+      
+      /* Resetear contenedores para un layout limpio */
+      .container {
+          max-width: 800px; /* Ancho máximo para el contenido principal */
+          padding-left: 1rem;
+          padding-right: 1rem;
       }
 
-      .material-symbols-outlined {
-        font-variation-settings:
-          "FILL" 0,
-          "wght" 600,
-          "GRAD" 0,
-          "opsz" 24;
-        font-size: 1.25rem;
-      }
-
+      /* --- Estilo de la Cabecera Global (My Orders) --- */
       header {
-        margin-bottom: 2rem;
+          background-color: #ffffff;
+          padding-top: 2rem;
+          padding-bottom: 0.5rem;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05); /* Sombra muy sutil */
+          margin-bottom: 1.5rem;
+      }
+      
+      header h1 {
+          font-size: 2rem;
+          font-weight: 700; /* Negrita como en la imagen */
+          color: #1a1a1a;
+          margin-bottom: 0.5rem;
+      }
+      
+      /* --- Pestañas de Navegación (Tabs) --- */
+      .tabs-navigation {
+          display: flex;
+          border-bottom: 1px solid #e0e0e0;
+          margin-top: 1rem;
+          padding-bottom: 0;
+      }
+      
+      .tab {
+          padding: 0.75rem 1.25rem;
+          font-size: 1rem;
+          font-weight: 500;
+          color: #8c8c8c;
+          cursor: pointer;
+          border-bottom: 3px solid transparent;
+          transition: color 0.2s, border-bottom-color 0.2s;
+      }
+      
+      .tab-active {
+          color: #27ae60; /* Verde principal para el activo */
+          border-bottom-color: #27ae60;
+          font-weight: 600;
+      }
+      
+      /* --- Tarjeta del Pedido (Order Card) --- */
+      .order-card {
+          background-color: #ffffff;
+          padding: 1.5rem;
+          border-radius: 8px;
+          box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+          margin-bottom: 2rem;
+      }
+      
+      .order-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 1.5rem;
+      }
+      
+      .order-info h2 {
+          font-size: 1.25rem;
+          font-weight: 600;
+          color: #1a1a1a;
+          margin: 0;
+      }
+      
+      .order-info p {
+          font-size: 1.1rem;
+          font-weight: 700;
+          color: #1a1a1a;
+          margin: 0.25rem 0 0 0;
+      }
+      
+      .order-actions a[role="button"] {
+          /* Estilo del botón "Order Details" */
+          background-color: #27ae60;
+          color: white;
+          border-radius: 6px;
+          padding: 0.5rem 1rem;
+          font-weight: 600;
+          text-decoration: none;
+          margin-left: 1rem;
+          transition: background-color 0.2s;
+      }
+      
+      .order-actions a[role="button"]:hover {
+          background-color: #219d53;
+      }
+      
+      .order-actions a.cancel-link {
+          /* Estilo del enlace "Cancel Order" */
+          color: #e74c3c;
+          font-weight: 600;
+          text-decoration: none;
+          margin-left: 1rem;
+          transition: color 0.2s;
       }
 
-      .layout {
-        display: grid;
-        gap: 2rem;
-        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-        align-items: start;
+      .order-actions a.cancel-link:hover {
+          color: #c0392b;
       }
-
-      .card {
-        padding: 2rem;
-        border-radius: 18px;
-        background-color: #ffffff;
-        box-shadow: 0 25px 45px rgba(15, 40, 85, 0.08);
-        border: 1px solid rgba(15, 40, 85, 0.08);
-      }
-
-      .status-pill {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        font-weight: 600;
-        padding: 0.35rem 0.75rem;
-        border-radius: 999px;
-        background: #1b64f2;
-        color: #ffffff;
-      }
-
-      .status-track {
-        list-style: none;
-        display: flex;
-        flex-direction: column;
-        gap: 1.5rem;
-        margin: 0;
-        padding: 0;
-      }
-
-      .status-track li {
-        display: grid;
-        grid-template-columns: 40px 1fr;
-        gap: 1rem;
-        align-items: center;
-      }
-
-      .status-track .bullet {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        display: grid;
-        place-items: center;
-        font-weight: 600;
-        border: 2px solid #d6def5;
-        color: #7a88b8;
-      }
-
-      .status-track li.reached .bullet {
-        background: #1b64f2;
-        color: #ffffff;
-        border-color: #1b64f2;
-      }
-
-      .status-track li.reached .label {
-        color: #102b6a;
-        font-weight: 600;
-      }
-
-      .status-track li:not(.reached) .label {
-        color: #7a88b8;
-      }
-
-      .status-track .label small {
-        display: block;
-        color: inherit;
-        font-weight: 400;
-        opacity: 0.8;
-      }
-
-      table {
-        margin-top: 1rem;
-        border-radius: 12px;
-        overflow: hidden;
-        border: 1px solid rgba(15, 40, 85, 0.08);
-      }
-
-      tbody tr:nth-child(even) {
-        background-color: rgba(27, 100, 242, 0.04);
-      }
-
+      
+      /* --- Barra de Progreso (Timeline) - Simplificada --- */
       .timeline {
-        margin-top: 1.5rem;
-        border-left: 3px solid rgba(27, 100, 242, 0.2);
-        padding-left: 1.25rem;
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 1rem;
+          position: relative;
+          padding: 0 0.5rem;
+      }
+      
+      .timeline-step {
+          text-align: center;
+          flex-grow: 1;
+          color: #8c8c8c;
+          font-size: 0.85rem;
+          font-weight: 500;
+          z-index: 10;
+          /* Usamos flexbox para que los labels queden abajo de los círculos */
+          display: flex;
+          flex-direction: column; 
+          align-items: center;
+      }
+      
+      .timeline-circle {
+          width: 16px; /* Aumentamos el tamaño */
+          height: 16px;
+          background-color: #dcdcdc; /* Gris inactivo */
+          border-radius: 50%;
+          margin-bottom: 0.4rem;
+          transition: background-color 0.3s ease;
+          position: relative;
+          z-index: 20;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+      }
+      
+      .timeline-line {
+          position: absolute;
+          top: 7px; /* Altura del centro del círculo */
+          left: 0;
+          right: 0;
+          height: 2px;
+          background-color: #dcdcdc; /* Línea inactiva */
+          z-index: 10;
+          margin: 0 1.5rem; /* Separar la línea de los círculos de los extremos */
+      }
+      
+      .timeline-line-progress {
+          position: absolute;
+          top: 0;
+          left: 0;
+          height: 100%;
+          width: 0%; 
+          background-color: #27ae60;
+          transition: width 0.5s ease-out;
+          z-index: 15;
+      }
+      
+      .step-completed .timeline-circle {
+          background-color: #27ae60; /* Verde activo/completado */
+          color: white;
+      }
+      
+      .step-completed .timeline-circle .material-symbols-outlined {
+          font-size: 0.75rem;
       }
 
-      .timeline-item {
-        position: relative;
-        padding-left: 1rem;
+      .step-completed .timeline-label {
+          color: #1a1a1a;
+          font-weight: 600;
+      }
+      
+      /* Estilo para el ícono de checkmark solo para pasos completados */
+      .timeline-circle .material-symbols-outlined {
+          display: none; /* Ocultar por defecto */
+      }
+      .step-completed .timeline-circle .material-symbols-outlined {
+          display: block; /* Mostrar solo cuando está completado */
+      }
+      
+      /* Información adicional debajo de la línea de tiempo */
+      .order-metadata {
+          display: flex;
+          gap: 1rem;
+          margin-top: 1.5rem;
+          font-size: 0.9rem;
+          color: #555555;
+          flex-wrap: wrap; 
+      }
+      
+      .order-metadata span {
+          display: flex;
+          align-items: center;
+          gap: 0.25rem;
+      }
+      
+      .order-metadata span:before {
+          content: '•';
+          color: #27ae60;
+          font-weight: bold;
+      }
+      
+      /* --- Estilo de la Tabla de Productos (Rediseñada) --- */
+      .product-details {
+          margin-top: 2rem;
+      }
+      
+      .product-details h2 {
+          font-size: 1.5rem;
+          font-weight: 600;
+          margin-bottom: 1rem;
+          color: #1a1a1a;
       }
 
-      .timeline-item::before {
-        content: "";
-        position: absolute;
-        left: -1.5rem;
-        top: 0.35rem;
-        width: 12px;
-        height: 12px;
-        border-radius: 50%;
-        background-color: #1b64f2;
+      /* Estilos para la tabla */
+      .product-details table {
+          width: 100%;
+          border-collapse: collapse;
+          --pico-font-size: 0.95rem;
+          border-radius: 8px;
+          overflow: hidden;
+          background-color: #ffffff;
+          box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+      }
+      
+      .product-details table thead th {
+          background-color: #f0f0f0;
+          color: #555555;
+          font-weight: 600;
+          text-align: left;
+          padding: 1rem;
+          border: none;
+      }
+      
+      .product-details table tbody td {
+          padding: 1rem;
+          border-top: 1px solid #eeeeee;
+          color: #333333;
+      }
+      
+      .product-details table tbody tr:nth-child(even) {
+          background-color: #f9f9f9;
       }
 
-      .badge {
-        display: inline-block;
-        border-radius: 999px;
-        padding: 0.25rem 0.75rem;
-        font-size: 0.75rem;
-        font-weight: 600;
-        background-color: rgba(16, 43, 106, 0.1);
-        color: #102b6a;
-        margin-left: 0.5rem;
+      .product-details table tfoot {
+          background-color: #ffffff; /* Aseguramos fondo blanco */
+          border-top: 2px solid #27ae60; /* Separador */
       }
 
-      footer {
-        margin-top: 3rem;
-        text-align: center;
-        color: #556499;
+      .product-details table tfoot th,
+      .product-details table tfoot td {
+          font-size: 1.1em;
+          padding: 1rem;
+          color: #1a1a1a;
+      }
+      
+      .product-details table tfoot strong {
+          color: #27ae60;
+          font-weight: 700;
       }
 
-      .actions {
-        display: flex;
-        gap: 1rem;
-        flex-wrap: wrap;
-      }
     </style>
   </head>
   <body>
-    <header class="container">
-      <article class="card">
-        <div class="actions">
-          <h1 style="margin-bottom: 0">Pedido de {{ order.customer_name }}</h1>
-          <span class="status-pill" id="status-pill">
-            <span class="material-symbols-outlined" aria-hidden="true">local_shipping</span>
-            <span id="status-label">{{ order.get_status_display }}</span>
-          </span>
+    <header>
+      <div class="container">
+        <h1>My Orders</h1>
+        
+        <div class="tabs-navigation">
+            <div class="tab tab-active">Upcoming Orders (1)</div>
+            <div class="tab">Previous Orders (0)</div>
+            <div class="tab">Scheduled Orders (0)</div>
         </div>
-        <p style="margin-top: 1rem; color: #53608f">Consulta el avance del pedido en tiempo real. Puedes abrir la <a href="{% url 'order-control' %}">consola de control</a> en otra pestaña para simular cambios manuales y ver cómo se reflejan aquí.</p>
-        <p style="margin-top: 0.5rem; font-size: 0.9rem; color: #7a88b8">
-          Última actualización: <span id="last-updated">{{ order.updated_at|date:"d \d\e F \a \l\a\s H:i" }}</span>
-        </p>
-      </article>
+      </div>
     </header>
 
-    <main class="container layout">
-      <section class="card">
-        <h2>Resumen del pedido</h2>
-        <p style="margin-top: -0.5rem; color: #556499">
-          Código interno <strong>#PO-2024-001</strong><br />
-          Realizado el {{ order.created_at|date:"d \d\e F \a \l\a\s H:i" }}
-        </p>
-        <table role="grid">
-          <thead>
-            <tr>
-              <th scope="col">Producto</th>
-              <th scope="col">SKU</th>
-              <th scope="col">Cantidad</th>
-              <th scope="col">Precio unitario</th>
-              <th scope="col">Subtotal</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for product in products %}
-            <tr>
-              <td>{{ product.name }}</td>
-              <td>{{ product.sku }}</td>
-              <td>{{ product.quantity }}</td>
-              <td>${{ product.price|floatformat:2 }}</td>
-              <td>${{ product.line_total|floatformat:2 }}</td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-        <p style="margin-top: 1rem; font-weight: 600">Total estimado: ${{ order_total|floatformat:2 }}</p>
-      </section>
-
-      <section class="card">
-        <h2>Estados del flujo</h2>
-        <ul class="status-track" id="status-track">
-          {% for value, label in status_choices %}
-          <li data-status="{{ value }}">
-            <span class="bullet">{{ forloop.counter }}</span>
-            <div class="label">
-              {{ label }}
-              <small data-status-helper="{{ value }}">
-                {% if forloop.first %}Preparando la orden en el local{% elif forloop.last %}Entrega completada{% else %}En logística y transporte{% endif %}
-              </small>
+    <main class="container">
+      <article class="order-card">
+        
+        <div class="order-header">
+            <img src="{% static 'app_icon.png' %}" alt="App Icon" style="width: 32px; height: 32px; margin-right: 1rem; float: left;">
+            <div class="order-info" style="flex-grow: 1;">
+                <h2>Order no #1125</h2> 
+                <p>EGP 213.00</p>
             </div>
-          </li>
-          {% endfor %}
-        </ul>
-
-        <div class="timeline" id="timeline">
-          <div class="timeline-item">
-            <p>
-              Pedido creado por {{ order.customer_name }}
-              <span class="badge">{{ order.created_at|date:"H:i" }}</span>
-            </p>
-            <small style="color: #7a88b8">Esperando próximas actualizaciones…</small>
-          </div>
+            <div class="order-actions">
+                <a href="#" role="button">Order Details</a>
+                <a href="#" class="cancel-link">Cancel Order</a>
+            </div>
         </div>
-      </section>
+
+        <div class="timeline">
+            <div class="timeline-line"><div class="timeline-line-progress" id="timeline-progress"></div></div>
+
+            <div class="timeline-step" id="step-preparing">
+                <div class="timeline-circle"><span class="material-symbols-outlined">done</span></div>
+                <div class="timeline-label">Preparing</div>
+            </div>
+            
+            <div class="timeline-step" id="step-out_for_delivery">
+                <div class="timeline-circle"><span class="material-symbols-outlined">done</span></div>
+                <div class="timeline-label">En camino</div>
+            </div>
+            
+            <div class="timeline-step" id="step-delivered">
+                <div class="timeline-circle"><span class="material-symbols-outlined">done</span></div>
+                <div class="timeline-label">Delivered</div>
+            </div>
+        </div>
+
+        <div class="order-metadata">
+            <span>2 Items</span>
+            <span>Cash on Delivery</span>
+            <span id="order-time-ago">Ordered 2 mins ago</span>
+            <span>Delivery within 25 mins</span>
+        </div>
+
+      </article>
+
+
+
     </main>
 
-    <footer class="container">
-      Visualización inspirada en herramientas de fulfillment modernas. <a href="{% url 'order-control' %}">Ir al panel de control manual</a>.
+    <footer class="container" style="margin-top: 2rem;">
+      <small style="color: #8c8c8c; display: block; text-align: center;">
+        Visualización del estado del pedido en tiempo real.
+        <a href="{% url 'order-control' %}" style="margin-left: 1rem; color: #27ae60; text-decoration: none;">Ir al panel de control</a>.
+      </small>
     </footer>
 
     <script>
-      const statusLabel = document.getElementById("status-label");
-      const statusTrack = document.getElementById("status-track");
-      const timeline = document.getElementById("timeline");
-      const lastUpdatedLabel = document.getElementById("last-updated");
-      const formatter = new Intl.DateTimeFormat("es-AR", {
-        dateStyle: "long",
-        timeStyle: "short",
-      });
+      // Mapeo de estados de Django a los IDs de los pasos
+      // Asumiendo que el backend envía: 'preparing', 'out_for_delivery', 'delivered'
+      const statusMap = {
+          'preparing': 'step-preparing',
+          'out_for_delivery': 'step-out_for_delivery', // 'En camino'
+          'delivered': 'step-delivered',
+          // Cualquier otro estado (e.g., 'created', 'cancelled') no avanzará el progreso visual.
+      };
+      
+      // La lista ordenada de 3 estados para calcular el progreso
+      const orderedStatuses = ['preparing', 'out_for_delivery', 'delivered'];
 
-      const history = [];
+      function updateTimeline(currentStatus) {
+        const progressLine = document.getElementById('timeline-progress');
+        let currentStepIndex = orderedStatuses.indexOf(currentStatus);
+        
+        let progressPercent = 0;
+        
+        // Hay 3 pasos, lo que significa 2 transiciones (0% -> 50% -> 100%)
+        const segments = orderedStatuses.length - 1; 
 
-      function updateProgress(steps) {
-        steps.forEach((step) => {
-          const item = statusTrack.querySelector(`[data-status="${step.value}"]`);
-          if (!item) return;
-          item.classList.toggle("reached", step.reached);
+        if (currentStepIndex >= 0) {
+            if (currentStepIndex === segments) {
+                // Estado 'delivered' (índice 2): 100%
+                progressPercent = 100;
+            } else if (currentStepIndex === 0) {
+                // Estado 'preparing' (índice 0): 0% (el primer paso no tiene línea antes)
+                progressPercent = 0;
+            } else {
+                // Estado 'out_for_delivery' (índice 1): 50%
+                progressPercent = (currentStepIndex * 100) / segments;
+            }
+        }
+        
+        // El progreso visual es ligeramente diferente: 
+        // Si es 'preparing', queremos que el círculo 1 esté verde, pero la línea en 0%.
+        // Si es 'out_for_delivery', queremos que el círculo 1 y 2 estén verdes, y la línea en 50%.
+        // Si es 'delivered', queremos todo verde y la línea en 100%.
+
+        // El cálculo de la línea debe ser:
+        // 'preparing' (index 0) -> 0%
+        // 'out_for_delivery' (index 1) -> 50%
+        // 'delivered' (index 2) -> 100%
+        progressPercent = currentStepIndex * 50; 
+        
+        progressLine.style.width = `${progressPercent}%`;
+
+        // Iterar sobre todos los pasos para aplicar clases
+        orderedStatuses.forEach((status, index) => {
+            const stepId = statusMap[status];
+            const stepElement = document.getElementById(stepId);
+            
+            if (!stepElement) return;
+
+            // 1. Resetear clases
+            stepElement.classList.remove('step-completed');
+            
+            // 2. Aplicar 'completed' para los pasos hasta el actual (inclusive)
+            if (index <= currentStepIndex) {
+                stepElement.classList.add('step-completed');
+            }
         });
       }
-
-      function pushHistory(statusDisplay, updatedAt) {
-        if (history.length && history[history.length - 1].status === statusDisplay) {
-          history[history.length - 1].updatedAt = updatedAt;
-          renderTimeline();
-          return;
-        }
-        history.push({ status: statusDisplay, updatedAt });
-        renderTimeline();
-      }
-
-      function renderTimeline() {
-        timeline.innerHTML = "";
-        history
-          .slice()
-          .reverse()
-          .forEach((item, index) => {
-            const container = document.createElement("div");
-            container.className = "timeline-item";
-            const title = document.createElement("p");
-            title.innerHTML = `Estado actualizado a <strong>${item.status}</strong><span class="badge">${item.updatedAt.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })}</span>`;
-            const detail = document.createElement("small");
-            detail.style.color = "#7a88b8";
-            detail.textContent = index === 0 ? "Último evento registrado." : "Evento anterior.";
-            container.append(title, detail);
-            timeline.appendChild(container);
-          });
+      
+      // Función para simular el tiempo transcurrido (estático, pero mejora el detalle)
+      function updateOrderTime(orderTimestamp) {
+          // Si tu backend envía el timestamp real, úsalo aquí.
+          // Por ahora, solo muestra el texto estático del diseño de la foto.
+          document.getElementById('order-time-ago').textContent = 'Ordered 2 mins ago';
       }
 
       async function fetchStatus() {
-        const response = await fetch("{% url 'order-status-data' %}");
-        if (!response.ok) return;
-        const data = await response.json();
-        statusLabel.textContent = data.status_display;
-        updateProgress(data.progress.steps);
-        const updatedDate = new Date(data.updated_at);
-        lastUpdatedLabel.textContent = formatter.format(updatedDate);
-        pushHistory(data.status_display, updatedDate);
+        try {
+            // Lógica de la llamada API
+            const response = await fetch("{% url 'order-status-data' %}");
+            if (!response.ok) throw new Error("Network response was not ok.");
+
+            const data = await response.json();
+            
+            // Actualizar la barra de progreso con el estado raw ('preparing', 'out_for_delivery', etc.)
+            updateTimeline(data.status); 
+
+        } catch (error) {
+            console.error("Error al cargar o actualizar estado:", error);
+        }
       }
 
-      fetchStatus().catch((error) => console.error("Error al cargar estado", error));
-      setInterval(() => {
-        fetchStatus().catch((error) => console.error("Error al actualizar estado", error));
-      }, 4000);
+      // Inicializar y configurar el intervalo de polling
+      // Llama a fetchStatus una vez al cargar y luego cada 2 segundos
+      fetchStatus();
+      setInterval(fetchStatus, 2000); // <-- Cambiado a 2000ms (2 segundos)
     </script>
   </body>
 </html>
