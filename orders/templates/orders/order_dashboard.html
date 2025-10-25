@@ -303,8 +303,8 @@
         <div class="order-header">
             <img src="{% static 'app_icon.png' %}" alt="Icono de la Aplicación" style="width: 32px; height: 32px; margin-right: 1rem; float: left;">
             <div class="order-info" style="flex-grow: 1;">
-                <h2>Pedido n.º #1125</h2> 
-                <p>EGP 213.00</p>
+                <h2>Pedido n.º #{% if order.pk %}{{ order.pk|stringformat:"04d" }}{% else %}—{% endif %}</h2>
+                <p>{{ currency }} {{ order_total|floatformat:2 }}</p>
             </div>
             <div class="order-actions">
                 <a href="#" role="button">Detalles del Pedido</a>
@@ -312,31 +312,55 @@
             </div>
         </div>
 
-        <div class="timeline">
+        <div class="timeline" data-initial-status="{{ order.status }}" role="list" aria-label="Estado del pedido">
             <div class="timeline-line"><div class="timeline-line-progress" id="progreso-linea-tiempo"></div></div>
 
-            <div class="timeline-step" id="paso-preparacion">
+            {% for value, label in status_choices %}
+            <div class="timeline-step" data-status="{{ value }}" role="listitem">
                 <div class="timeline-circle"><span class="material-symbols-outlined">done</span></div>
-                <div class="timeline-label">Preparando</div>
+                <div class="timeline-label">{{ label }}</div>
             </div>
-            
-            <div class="timeline-step" id="paso-en_camino">
-                <div class="timeline-circle"><span class="material-symbols-outlined">done</span></div>
-                <div class="timeline-label">En camino</div>
-            </div>
-            
-            <div class="timeline-step" id="paso-entregado">
-                <div class="timeline-circle"><span class="material-symbols-outlined">done</span></div>
-                <div class="timeline-label">Entregado</div>
-            </div>
+            {% endfor %}
         </div>
 
         <div class="order-metadata">
-            <span>2 Artículos</span>
+            <span>{{ total_items }} artículo{% if total_items != 1 %}s{% endif %}</span>
             <span>Pago contra Reembolso</span>
-            <span id="tiempo-transcurrido">Pedido hace 2 min</span>
-            <span>Entrega en 25 min</span>
+            <span id="tiempo-transcurrido">Actualizado hace {{ order.updated_at|timesince }}</span>
+            <span>Estado actual: {{ order.get_status_display }}</span>
         </div>
+
+        <section class="product-details">
+            <h2>Resumen de productos</h2>
+            <table role="grid">
+                <thead>
+                    <tr>
+                        <th scope="col">Producto</th>
+                        <th scope="col">SKU</th>
+                        <th scope="col">Cantidad</th>
+                        <th scope="col">Precio unitario</th>
+                        <th scope="col">Subtotal</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for product in products %}
+                    <tr>
+                        <td>{{ product.name }}</td>
+                        <td>{{ product.sku }}</td>
+                        <td>{{ product.quantity }}</td>
+                        <td>{{ currency }} {{ product.price|floatformat:2 }}</td>
+                        <td>{{ currency }} {{ product.line_total|floatformat:2 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <th scope="row" colspan="4">Total del pedido</th>
+                        <td><strong>{{ currency }} {{ order_total|floatformat:2 }}</strong></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </section>
 
       </article>
 
@@ -353,59 +377,51 @@
     
     </body>
     <script>
-    // Mapeo de estados de Django a los IDs de los pasos
-    // Asumiendo que el backend envía: 'preparing', 'out_for_delivery', 'delivered'
-    const mapaEstados = {
-        'preparing': 'paso-preparacion',
-        'out_for_delivery': 'paso-en_camino', // 'En camino'
-        'delivered': 'paso-entregado',
-        // Cualquier otro estado (e.g., 'created', 'cancelled') no avanzará el progreso visual.
-    };
-    
-    // La lista ordenada de 3 estados para calcular el progreso
-    const estadosOrdenados = ['preparing', 'out_for_delivery', 'delivered'];
+    const timelineSteps = Array.from(document.querySelectorAll('.timeline-step'));
+    const estadosOrdenados = timelineSteps.map((step) => step.dataset.status);
+    const lineaProgreso = document.getElementById('progreso-linea-tiempo');
 
     function actualizarLineaTiempo(estadoActual) {
-      const lineaProgreso = document.getElementById('progreso-linea-tiempo');
-      let indicePasoActual = estadosOrdenados.indexOf(estadoActual);
-      
-      let progresoPorcentaje = 0;
-      
-      // Hay 3 pasos, lo que significa 2 transiciones (0% -> 50% -> 100%)
-      const segmentos = estadosOrdenados.length - 1; 
-
-      if (indicePasoActual >= 0) {
-          // El cálculo de la línea debe ser:
-          // 'preparing' (index 0) -> 0%
-          // 'out_for_delivery' (index 1) -> 50%
-          // 'delivered' (index 2) -> 100%
-          progresoPorcentaje = indicePasoActual * 50; 
+      if (!lineaProgreso || estadosOrdenados.length === 0) {
+        return;
       }
-      
+
+      const totalSegmentos = Math.max(estadosOrdenados.length - 1, 1);
+      const indiceEncontrado = estadosOrdenados.indexOf(estadoActual);
+      const indicePasoActual = indiceEncontrado;
+      const progresoIndice = Math.min(Math.max(indiceEncontrado, 0), totalSegmentos);
+      const progresoPorcentaje = totalSegmentos === 0 ? 100 : (progresoIndice / totalSegmentos) * 100;
+
       lineaProgreso.style.width = `${progresoPorcentaje}%`;
 
-      // Iterar sobre todos los pasos para aplicar clases
-      estadosOrdenados.forEach((estado, indice) => {
-          const id_paso = mapaEstados[estado];
-          const elementoPaso = document.getElementById(id_paso);
-          
-          if (!elementoPaso) return;
-
-          // 1. Resetear clases
-          elementoPaso.classList.remove('step-completed');
-          
-          // 2. Aplicar 'completed' para los pasos hasta el actual (inclusive)
-          if (indice <= indicePasoActual) {
-              elementoPaso.classList.add('step-completed');
-          }
+      timelineSteps.forEach((step, index) => {
+        const completado = indicePasoActual >= 0 && index <= indicePasoActual;
+        step.classList.toggle('step-completed', completado);
       });
     }
-    
-    // Función para simular el tiempo transcurrido (estático, pero mejora el detalle)
-    function actualizarTiempoPedido(timestampPedido) {
-        // Si tu backend envía el timestamp real, úsalo aquí.
-        // Por ahora, solo muestra el texto estático del diseño de la foto.
-        document.getElementById('tiempo-transcurrido').textContent = 'Pedido hace 2 min';
+
+    function actualizarTiempoPedido(updatedAtIso) {
+        if (!updatedAtIso) {
+            return;
+        }
+
+        const elementoTiempo = document.getElementById('tiempo-transcurrido');
+        if (!elementoTiempo) {
+            return;
+        }
+
+        const actualizado = new Date(updatedAtIso);
+        const ahora = new Date();
+        const diferenciaMs = Math.max(ahora.getTime() - actualizado.getTime(), 0);
+        const minutos = Math.floor(diferenciaMs / 60000);
+
+        if (minutos <= 0) {
+            elementoTiempo.textContent = 'Actualizado hace un instante';
+            return;
+        }
+
+        const sufijo = minutos === 1 ? '' : 's';
+        elementoTiempo.textContent = `Actualizado hace ${minutos} minuto${sufijo}`;
     }
 
     async function obtenerEstado() {
@@ -415,9 +431,10 @@
           if (!response.ok) throw new Error("La respuesta de la red no fue correcta.");
 
           const data = await response.json();
-          
+
           // Actualizar la barra de progreso con el estado raw ('preparing', 'out_for_delivery', etc.)
-          actualizarLineaTiempo(data.status); 
+          actualizarLineaTiempo(data.status);
+          actualizarTiempoPedido(data.updated_at);
 
       } catch (error) {
           console.error("Error al cargar o actualizar estado:", error);
@@ -426,6 +443,8 @@
 
     // Inicializar y configurar el intervalo de polling
     // Llama a obtenerEstado una vez al cargar y luego cada 2 segundos
+    actualizarLineaTiempo(document.querySelector('.timeline')?.dataset.initialStatus ?? null);
+    actualizarTiempoPedido("{{ order.updated_at|date:'c' }}");
     obtenerEstado();
     setInterval(obtenerEstado, 2000); // <-- Polling cada 2 segundos
 </script>

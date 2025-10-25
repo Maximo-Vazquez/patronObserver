@@ -9,6 +9,7 @@ class Order(models.Model):
     class Status(models.TextChoices):
         PREPARING = "preparing", "Preparando pedido"
         SHIPPED = "shipped", "En camino"
+        OUTSIDE = "outside", "Afuera"
         DELIVERED = "delivered", "Entregado"
 
     customer_name = models.CharField(
