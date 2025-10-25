@@ -62,6 +62,8 @@ class OrderDashboardView(TemplateView):
                 "status_choices": list(Order.Status.choices),
                 "products": products,
                 "order_total": sum(item["line_total"] for item in products),
+                "total_items": sum(item["quantity"] for item in products),
+                "currency": "EGP",
             }
         )
         return context

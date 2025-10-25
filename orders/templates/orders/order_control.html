@@ -139,12 +139,16 @@
           <div class="status-option {% if value == order.status %}current{% endif %}" data-status-value="{{ value }}">
             <strong>{{ label }}</strong>
             <small>
-              {% if forloop.first %}
+              {% if value == 'preparing' %}
               Etapa inicial: preparando productos y verificando stock.
-              {% elif forloop.last %}
+              {% elif value == 'shipped' %}
+              Coordinación con la empresa logística y reparto en curso.
+              {% elif value == 'outside' %}
+              La repartidora llegó y te espera afuera para entregar el pedido.
+              {% elif value == 'delivered' %}
               ¡Entrega completada y confirmada por la clienta!
               {% else %}
-              Coordinación con la empresa logística y reparto en curso.
+              Seguimiento automático del estado del pedido en tiempo real.
               {% endif %}
             </small>
           </div>
