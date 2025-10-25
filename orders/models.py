@@ -42,20 +42,35 @@ class Order(models.Model):
 
         return f"Pedido de {self.customer_name}"
 
-    def next_status(self) -> str:
+    def obtener_siguiente_estado(self) -> str:
         """Obtiene el siguiente estado disponible para el pedido."""
 
-        status_order = list(self.Status.values)
+        orden_estados = list(self.Status.values)
         try:
-            current_index = status_order.index(self.status)
+            indice_actual = orden_estados.index(self.status)
         except ValueError:
             return self.Status.PREPARING
 
-        if current_index < len(status_order) - 1:
-            return status_order[current_index + 1]
+        if indice_actual < len(orden_estados) - 1:
+            return orden_estados[indice_actual + 1]
         return self.status
 
-    def is_completed(self) -> bool:
+    def siguiente_estado(self) -> str:
+        """Alias en español para compatibilidad semántica."""
+
+        return self.obtener_siguiente_estado()
+
+    def next_status(self) -> str:
+        """Método de compatibilidad con el nombre anterior en inglés."""
+
+        return self.obtener_siguiente_estado()
+
+    def esta_completado(self) -> bool:
         """Indica si el pedido ya llegó a su estado final."""
 
         return self.status == self.Status.DELIVERED
+
+    def is_completed(self) -> bool:
+        """Método de compatibilidad con el nombre anterior en inglés."""
+
+        return self.esta_completado()

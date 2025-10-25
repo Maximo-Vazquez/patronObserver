@@ -3,29 +3,33 @@
 from django.urls import path
 
 from .views import (
-    OrderControlView,
-    OrderDashboardView,
-    OrderStatusDataView,
-    OrderStatusSetView,
-    OrderStatusUpdateView,
+    AvanceEstadoPedidoVista,
+    ControlPedidoVista,
+    DatosEstadoPedidoVista,
+    DefinirEstadoPedidoVista,
+    PanelPedidoVista,
 )
 
 urlpatterns = [
-    path("", OrderDashboardView.as_view(), name="order-status"),
+    path("", PanelPedidoVista.as_view(), name="order-status"),
     path(
         "control/",
-        OrderControlView.as_view(),
+        ControlPedidoVista.as_view(),
         name="order-control",
     ),
     path(
         "datos/",
-        OrderStatusDataView.as_view(),
+        DatosEstadoPedidoVista.as_view(),
         name="order-status-data",
     ),
     path(
         "definir/",
-        OrderStatusSetView.as_view(),
+        DefinirEstadoPedidoVista.as_view(),
         name="order-status-set",
     ),
-    path("actualizar/", OrderStatusUpdateView.as_view(), name="order-status-update"),
+    path(
+        "actualizar/",
+        AvanceEstadoPedidoVista.as_view(),
+        name="order-status-update",
+    ),
 ]
