@@ -21,7 +21,7 @@
           padding-right: 1rem;
       }
 
-      /* --- Estilo de la Cabecera Global (My Orders) --- */
+      /* --- Estilo de la Cabecera Global (Mis Pedidos) --- */
       header {
           background-color: #ffffff;
           padding-top: 2rem;
@@ -92,7 +92,7 @@
       }
       
       .order-actions a[role="button"] {
-          /* Estilo del botón "Order Details" */
+          /* Estilo del botón "Detalles del Pedido" */
           background-color: #27ae60;
           color: white;
           border-radius: 6px;
@@ -108,7 +108,7 @@
       }
       
       .order-actions a.cancel-link {
-          /* Estilo del enlace "Cancel Order" */
+          /* Estilo del enlace "Cancelar Pedido" */
           color: #e74c3c;
           font-weight: 600;
           text-decoration: none;
@@ -120,7 +120,7 @@
           color: #c0392b;
       }
       
-      /* --- Barra de Progreso (Timeline) - Simplificada --- */
+      /* --- Barra de Progreso (Línea de Tiempo) - Simplificada --- */
       .timeline {
           display: flex;
           justify-content: space-between;
@@ -138,7 +138,7 @@
           font-weight: 500;
           z-index: 10;
           /* Usamos flexbox para que los labels queden abajo de los círculos */
-          display: flex;
+          display: flex; 
           flex-direction: column; 
           align-items: center;
       }
@@ -287,12 +287,12 @@
   <body>
     <header>
       <div class="container">
-        <h1>My Orders</h1>
+        <h1>Mis Pedidos</h1>
         
         <div class="tabs-navigation">
-            <div class="tab tab-active">Upcoming Orders (1)</div>
-            <div class="tab">Previous Orders (0)</div>
-            <div class="tab">Scheduled Orders (0)</div>
+            <div class="tab tab-active">Pedidos Próximos (1)</div>
+            <div class="tab">Pedidos Anteriores (0)</div>
+            <div class="tab">Pedidos Programados (0)</div>
         </div>
       </div>
     </header>
@@ -301,41 +301,41 @@
       <article class="order-card">
         
         <div class="order-header">
-            <img src="{% static 'app_icon.png' %}" alt="App Icon" style="width: 32px; height: 32px; margin-right: 1rem; float: left;">
+            <img src="{% static 'app_icon.png' %}" alt="Icono de la Aplicación" style="width: 32px; height: 32px; margin-right: 1rem; float: left;">
             <div class="order-info" style="flex-grow: 1;">
-                <h2>Order no #1125</h2> 
+                <h2>Pedido n.º #1125</h2> 
                 <p>EGP 213.00</p>
             </div>
             <div class="order-actions">
-                <a href="#" role="button">Order Details</a>
-                <a href="#" class="cancel-link">Cancel Order</a>
+                <a href="#" role="button">Detalles del Pedido</a>
+                <a href="#" class="cancel-link">Cancelar Pedido</a>
             </div>
         </div>
 
         <div class="timeline">
-            <div class="timeline-line"><div class="timeline-line-progress" id="timeline-progress"></div></div>
+            <div class="timeline-line"><div class="timeline-line-progress" id="progreso-linea-tiempo"></div></div>
 
-            <div class="timeline-step" id="step-preparing">
+            <div class="timeline-step" id="paso-preparacion">
                 <div class="timeline-circle"><span class="material-symbols-outlined">done</span></div>
-                <div class="timeline-label">Preparing</div>
+                <div class="timeline-label">Preparando</div>
             </div>
             
-            <div class="timeline-step" id="step-out_for_delivery">
+            <div class="timeline-step" id="paso-en_camino">
                 <div class="timeline-circle"><span class="material-symbols-outlined">done</span></div>
                 <div class="timeline-label">En camino</div>
             </div>
             
-            <div class="timeline-step" id="step-delivered">
+            <div class="timeline-step" id="paso-entregado">
                 <div class="timeline-circle"><span class="material-symbols-outlined">done</span></div>
-                <div class="timeline-label">Delivered</div>
+                <div class="timeline-label">Entregado</div>
             </div>
         </div>
 
         <div class="order-metadata">
-            <span>2 Items</span>
-            <span>Cash on Delivery</span>
-            <span id="order-time-ago">Ordered 2 mins ago</span>
-            <span>Delivery within 25 mins</span>
+            <span>2 Artículos</span>
+            <span>Pago contra Reembolso</span>
+            <span id="tiempo-transcurrido">Pedido hace 2 min</span>
+            <span>Entrega en 25 min</span>
         </div>
 
       </article>
@@ -350,99 +350,83 @@
         <a href="{% url 'order-control' %}" style="margin-left: 1rem; color: #27ae60; text-decoration: none;">Ir al panel de control</a>.
       </small>
     </footer>
-
+    
+    </body>
     <script>
-      // Mapeo de estados de Django a los IDs de los pasos
-      // Asumiendo que el backend envía: 'preparing', 'out_for_delivery', 'delivered'
-      const statusMap = {
-          'preparing': 'step-preparing',
-          'out_for_delivery': 'step-out_for_delivery', // 'En camino'
-          'delivered': 'step-delivered',
-          // Cualquier otro estado (e.g., 'created', 'cancelled') no avanzará el progreso visual.
-      };
+    // Mapeo de estados de Django a los IDs de los pasos
+    // Asumiendo que el backend envía: 'preparing', 'out_for_delivery', 'delivered'
+    const mapaEstados = {
+        'preparing': 'paso-preparacion',
+        'out_for_delivery': 'paso-en_camino', // 'En camino'
+        'delivered': 'paso-entregado',
+        // Cualquier otro estado (e.g., 'created', 'cancelled') no avanzará el progreso visual.
+    };
+    
+    // La lista ordenada de 3 estados para calcular el progreso
+    const estadosOrdenados = ['preparing', 'out_for_delivery', 'delivered'];
+
+    function actualizarLineaTiempo(estadoActual) {
+      const lineaProgreso = document.getElementById('progreso-linea-tiempo');
+      let indicePasoActual = estadosOrdenados.indexOf(estadoActual);
       
-      // La lista ordenada de 3 estados para calcular el progreso
-      const orderedStatuses = ['preparing', 'out_for_delivery', 'delivered'];
+      let progresoPorcentaje = 0;
+      
+      // Hay 3 pasos, lo que significa 2 transiciones (0% -> 50% -> 100%)
+      const segmentos = estadosOrdenados.length - 1; 
 
-      function updateTimeline(currentStatus) {
-        const progressLine = document.getElementById('timeline-progress');
-        let currentStepIndex = orderedStatuses.indexOf(currentStatus);
-        
-        let progressPercent = 0;
-        
-        // Hay 3 pasos, lo que significa 2 transiciones (0% -> 50% -> 100%)
-        const segments = orderedStatuses.length - 1; 
-
-        if (currentStepIndex >= 0) {
-            if (currentStepIndex === segments) {
-                // Estado 'delivered' (índice 2): 100%
-                progressPercent = 100;
-            } else if (currentStepIndex === 0) {
-                // Estado 'preparing' (índice 0): 0% (el primer paso no tiene línea antes)
-                progressPercent = 0;
-            } else {
-                // Estado 'out_for_delivery' (índice 1): 50%
-                progressPercent = (currentStepIndex * 100) / segments;
-            }
-        }
-        
-        // El progreso visual es ligeramente diferente: 
-        // Si es 'preparing', queremos que el círculo 1 esté verde, pero la línea en 0%.
-        // Si es 'out_for_delivery', queremos que el círculo 1 y 2 estén verdes, y la línea en 50%.
-        // Si es 'delivered', queremos todo verde y la línea en 100%.
-
-        // El cálculo de la línea debe ser:
-        // 'preparing' (index 0) -> 0%
-        // 'out_for_delivery' (index 1) -> 50%
-        // 'delivered' (index 2) -> 100%
-        progressPercent = currentStepIndex * 50; 
-        
-        progressLine.style.width = `${progressPercent}%`;
-
-        // Iterar sobre todos los pasos para aplicar clases
-        orderedStatuses.forEach((status, index) => {
-            const stepId = statusMap[status];
-            const stepElement = document.getElementById(stepId);
-            
-            if (!stepElement) return;
-
-            // 1. Resetear clases
-            stepElement.classList.remove('step-completed');
-            
-            // 2. Aplicar 'completed' para los pasos hasta el actual (inclusive)
-            if (index <= currentStepIndex) {
-                stepElement.classList.add('step-completed');
-            }
-        });
+      if (indicePasoActual >= 0) {
+          // El cálculo de la línea debe ser:
+          // 'preparing' (index 0) -> 0%
+          // 'out_for_delivery' (index 1) -> 50%
+          // 'delivered' (index 2) -> 100%
+          progresoPorcentaje = indicePasoActual * 50; 
       }
       
-      // Función para simular el tiempo transcurrido (estático, pero mejora el detalle)
-      function updateOrderTime(orderTimestamp) {
-          // Si tu backend envía el timestamp real, úsalo aquí.
-          // Por ahora, solo muestra el texto estático del diseño de la foto.
-          document.getElementById('order-time-ago').textContent = 'Ordered 2 mins ago';
+      lineaProgreso.style.width = `${progresoPorcentaje}%`;
+
+      // Iterar sobre todos los pasos para aplicar clases
+      estadosOrdenados.forEach((estado, indice) => {
+          const id_paso = mapaEstados[estado];
+          const elementoPaso = document.getElementById(id_paso);
+          
+          if (!elementoPaso) return;
+
+          // 1. Resetear clases
+          elementoPaso.classList.remove('step-completed');
+          
+          // 2. Aplicar 'completed' para los pasos hasta el actual (inclusive)
+          if (indice <= indicePasoActual) {
+              elementoPaso.classList.add('step-completed');
+          }
+      });
+    }
+    
+    // Función para simular el tiempo transcurrido (estático, pero mejora el detalle)
+    function actualizarTiempoPedido(timestampPedido) {
+        // Si tu backend envía el timestamp real, úsalo aquí.
+        // Por ahora, solo muestra el texto estático del diseño de la foto.
+        document.getElementById('tiempo-transcurrido').textContent = 'Pedido hace 2 min';
+    }
+
+    async function obtenerEstado() {
+      try {
+          // Lógica de la llamada API
+          const response = await fetch("{% url 'order-status-data' %}");
+          if (!response.ok) throw new Error("La respuesta de la red no fue correcta.");
+
+          const data = await response.json();
+          
+          // Actualizar la barra de progreso con el estado raw ('preparing', 'out_for_delivery', etc.)
+          actualizarLineaTiempo(data.status); 
+
+      } catch (error) {
+          console.error("Error al cargar o actualizar estado:", error);
       }
+    }
 
-      async function fetchStatus() {
-        try {
-            // Lógica de la llamada API
-            const response = await fetch("{% url 'order-status-data' %}");
-            if (!response.ok) throw new Error("Network response was not ok.");
-
-            const data = await response.json();
-            
-            // Actualizar la barra de progreso con el estado raw ('preparing', 'out_for_delivery', etc.)
-            updateTimeline(data.status); 
-
-        } catch (error) {
-            console.error("Error al cargar o actualizar estado:", error);
-        }
-      }
-
-      // Inicializar y configurar el intervalo de polling
-      // Llama a fetchStatus una vez al cargar y luego cada 2 segundos
-      fetchStatus();
-      setInterval(fetchStatus, 2000); // <-- Cambiado a 2000ms (2 segundos)
-    </script>
-  </body>
+    // Inicializar y configurar el intervalo de polling
+    // Llama a obtenerEstado una vez al cargar y luego cada 2 segundos
+    obtenerEstado();
+    setInterval(obtenerEstado, 2000); // <-- Polling cada 2 segundos
+</script>
 </html>
