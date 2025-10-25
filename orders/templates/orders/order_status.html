@@ -1,0 +1,105 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <title>Seguimiento de pedido con patrón Observador</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css" />
+    <style>
+      body {
+        margin-top: 2rem;
+      }
+      .status-tag {
+        font-weight: bold;
+      }
+      .notification-list li {
+        margin-bottom: 0.5rem;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="container">
+      <section>
+        <h1>Estado del pedido de {{ order.customer_name }}</h1>
+        <p>
+          <span class="status-tag">Estado actual:</span>
+          <span id="status-label">{{ order.get_status_display }}</span>
+        </p>
+        <button id="update-status" class="contrast">Avanzar estado sin recargar</button>
+        <p id="completion-message" hidden>
+          🎉 ¡El pedido ya fue entregado! Las nuevas notificaciones se detienen automáticamente.
+        </p>
+      </section>
+
+      <section>
+        <h2>Notificaciones recibidas</h2>
+        <p>
+          Esta lista se actualiza dinámicamente utilizando el patrón observador en el
+          servidor. Cada vez que el pedido cambia de estado, la clienta (nuestro
+          observador) recibe una notificación inmediata sin recargar la página.
+        </p>
+        <ul id="notifications" class="notification-list">
+          <li>Esperando la primera actualización…</li>
+        </ul>
+      </section>
+    </main>
+
+    <script>
+      // Obtiene el token CSRF desde las cookies de Django para poder hacer peticiones POST seguras.
+      function getCsrfToken() {
+        return document.cookie
+          .split(";")
+          .map((cookie) => cookie.trim())
+          .find((cookie) => cookie.startsWith("csrftoken="))
+          ?.split("=")[1];
+      }
+
+      const statusLabel = document.getElementById("status-label");
+      const notificationList = document.getElementById("notifications");
+      const completionMessage = document.getElementById("completion-message");
+      const button = document.getElementById("update-status");
+
+      async function requestStatusUpdate() {
+        const response = await fetch("{% url 'order-status-update' %}", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": getCsrfToken() ?? "",
+          },
+          body: JSON.stringify({}),
+        });
+
+        if (!response.ok) {
+          alert("No se pudo comunicar con el servidor. Intenta nuevamente.");
+          return;
+        }
+
+        const data = await response.json();
+        statusLabel.textContent = data.status_display;
+
+        // Limpiamos la lista solo la primera vez que llega una notificación real.
+        if (notificationList.firstElementChild &&
+            notificationList.firstElementChild.textContent.includes("Esperando")) {
+          notificationList.textContent = "";
+        }
+
+        data.notifications.forEach((message) => {
+          const item = document.createElement("li");
+          item.textContent = message;
+          notificationList.prepend(item);
+        });
+
+        if (data.completed) {
+          completionMessage.hidden = false;
+          button.disabled = true;
+        }
+      }
+
+      button.addEventListener("click", () => {
+        requestStatusUpdate().catch((error) => {
+          console.error("Error actualizando el pedido", error);
+        });
+      });
+    </script>
+  </body>
+</html>
