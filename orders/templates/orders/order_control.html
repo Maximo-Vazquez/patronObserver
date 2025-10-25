@@ -1,0 +1,221 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <title>Panel de control del pedido</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css" />
+    <style>
+      body {
+        background: #0b132b;
+        min-height: 100vh;
+        padding: 3rem 0;
+        color: #f7f9ff;
+      }
+
+      main.container {
+        max-width: 720px;
+      }
+
+      .card {
+        background: rgba(13, 25, 54, 0.75);
+        border-radius: 20px;
+        padding: 2.5rem;
+        box-shadow: 0 40px 60px rgba(3, 11, 38, 0.45);
+        backdrop-filter: blur(16px);
+        border: 1px solid rgba(151, 167, 255, 0.15);
+      }
+
+      h1 span {
+        display: block;
+        font-size: 1rem;
+        font-weight: 500;
+        color: #b7c4ff;
+        margin-top: 0.35rem;
+      }
+
+      form {
+        display: grid;
+        gap: 1.5rem;
+        margin-top: 2rem;
+      }
+
+      select,
+      button,
+      input[type="text"] {
+        border-radius: 999px;
+        padding: 0.85rem 1.25rem;
+        border: none;
+      }
+
+      select {
+        background: rgba(255, 255, 255, 0.1);
+        color: inherit;
+      }
+
+      button[type="submit"] {
+        font-size: 1rem;
+        font-weight: 600;
+        background: linear-gradient(135deg, #44ffd2 0%, #11cdef 100%);
+        color: #001427;
+        box-shadow: 0 12px 35px rgba(68, 255, 210, 0.35);
+      }
+
+      .status-grid {
+        display: grid;
+        gap: 1rem;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        margin-top: 2rem;
+      }
+
+      .status-option {
+        border-radius: 16px;
+        padding: 1.25rem;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid transparent;
+        transition: transform 0.2s ease, border 0.2s ease;
+      }
+
+      .status-option.current {
+        border-color: #44ffd2;
+        box-shadow: 0 16px 30px rgba(68, 255, 210, 0.18);
+      }
+
+      .status-option strong {
+        display: block;
+        font-size: 1.05rem;
+        margin-bottom: 0.35rem;
+      }
+
+      .status-option small {
+        color: rgba(247, 249, 255, 0.7);
+      }
+
+      .notice {
+        border-radius: 14px;
+        padding: 1rem 1.25rem;
+        background: rgba(11, 220, 174, 0.15);
+        border: 1px solid rgba(68, 255, 210, 0.4);
+        color: #d3fff1;
+        margin-top: 1.5rem;
+        display: none;
+      }
+
+      nav {
+        margin-bottom: 1.5rem;
+      }
+
+      nav a {
+        color: #44ffd2;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="container">
+      <nav>
+        <a href="{% url 'order-status' %}">← Volver al panel visual</a>
+      </nav>
+      <article class="card">
+        <h1>
+          Control manual del pedido
+          <span>Cliente: {{ order.customer_name }} · Último estado: {{ order.get_status_display }}</span>
+        </h1>
+        <p>Selecciona un estado en la lista o envía un valor manual para simular cómo el patrón observador notifica a la clienta. Mantén abierta la otra ventana para ver el cambio reflejado automáticamente.</p>
+        <form id="control-form">
+          <label>
+            Estado del pedido
+            <select name="status" id="status-select">
+              {% for value, label in status_choices %}
+              <option value="{{ value }}" {% if value == order.status %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <button type="submit">Aplicar cambio</button>
+        </form>
+        <aside class="notice" id="notice" role="status"></aside>
+
+        <div class="status-grid" id="status-grid">
+          {% for value, label in status_choices %}
+          <div class="status-option {% if value == order.status %}current{% endif %}" data-status-value="{{ value }}">
+            <strong>{{ label }}</strong>
+            <small>
+              {% if forloop.first %}
+              Etapa inicial: preparando productos y verificando stock.
+              {% elif forloop.last %}
+              ¡Entrega completada y confirmada por la clienta!
+              {% else %}
+              Coordinación con la empresa logística y reparto en curso.
+              {% endif %}
+            </small>
+          </div>
+          {% endfor %}
+        </div>
+      </article>
+    </main>
+
+    <script>
+      function getCsrfToken() {
+        return document.cookie
+          .split(";")
+          .map((cookie) => cookie.trim())
+          .find((cookie) => cookie.startsWith("csrftoken="))
+          ?.split("=")[1];
+      }
+
+      const form = document.getElementById("control-form");
+      const notice = document.getElementById("notice");
+      const select = document.getElementById("status-select");
+      const statusGrid = document.getElementById("status-grid");
+
+      function showNotice(message, isError = false) {
+        notice.textContent = message;
+        notice.style.display = "block";
+        notice.style.backgroundColor = isError
+          ? "rgba(255, 82, 100, 0.18)"
+          : "rgba(11, 220, 174, 0.15)";
+        notice.style.borderColor = isError
+          ? "rgba(255, 107, 129, 0.45)"
+          : "rgba(68, 255, 210, 0.4)";
+      }
+
+      function updateGrid(currentStatus) {
+        const options = statusGrid.querySelectorAll(".status-option");
+        options.forEach((option) => {
+          option.classList.toggle("current", option.dataset.statusValue === currentStatus);
+        });
+      }
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const payloadStatus = select.value;
+
+        try {
+          const response = await fetch("{% url 'order-status-set' %}", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRFToken": getCsrfToken() ?? "",
+            },
+            body: JSON.stringify({ status: payloadStatus }),
+          });
+
+          const data = await response.json();
+
+          if (!response.ok) {
+            showNotice(data.error ?? "No se pudo actualizar el pedido.", true);
+            return;
+          }
+
+          showNotice(
+            `Estado actualizado a "${data.status_display}". Se enviaron ${data.notifications.length} notificaciones al cliente.`,
+          );
+          select.value = data.status;
+          updateGrid(data.status);
+        } catch (error) {
+          console.error("Error al enviar el formulario", error);
+          showNotice("Ocurrió un error inesperado. Intenta nuevamente.", true);
+        }
+      });
+    </script>
+  </body>
+</html>
